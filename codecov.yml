@@ -1,0 +1,28 @@
+codecov:
+  notify:
+    # a high number to try to delay codecov reporting until most of the test
+    # runs have finished. Should match with comment.after_n_builds below.
+    after_n_builds: 32
+
+comment:
+  after_n_builds: 32
+  layout: "diff, files"
+  behavior: default
+  require_changes: true # if true: only post the comment if coverage changes
+  require_base: false # [yes :: must have a base report to post]
+  require_head: true # [yes :: must have a head report to post]
+  branches: null
+
+ignore:
+  - "docs/**"
+
+coverage:
+  status:
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+        only_pulls: true
+    project:
+      default:
+        enabled: false

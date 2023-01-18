@@ -1,0 +1,153 @@
+site_name: Ibis Project
+site_url: https://ibis-project.org
+strict: false # check for strictness when building the docs in CI
+edit_uri: ""
+repo_url: https://github.com/ibis-project/ibis
+extra_css:
+  - stylesheets/extra.css
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - content.code.annotate
+    - content.tabs.link
+    - header.autohide
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+  icon:
+    repo: fontawesome/brands/github
+  logo: static/icons/ibis/logo.svg
+  favicon: static/icons/ibis/logo.svg
+  palette:
+    scheme: slate
+    primary: teal
+    accent: lime
+  custom_dir: docs/overrides
+plugins:
+  - search
+  - mike
+  - autorefs
+  - git-revision-date
+  - exclude:
+      glob:
+        - backends/template.md
+        - backends/support_matrix.csv
+        - CONTRIBUTING.md
+  - gen-files:
+      scripts:
+        - gen_matrix.py
+  - table-reader
+  - macros
+  - mkdocstrings:
+      enable_inventory: true
+      handlers:
+        python:
+          import:
+            - https://docs.python.org/3/objects.inv
+            - https://docs.sqlalchemy.org/objects.inv
+          selection:
+            docstring_style: numpy
+            filters:
+              - "!^_"
+              - "^__init__$"
+              - "!^ast_schema"
+              - "!^backend_table_type"
+              - "!^column$"
+              - "!^compiler$"
+              - "!^do_connect"
+              - "!^fetch_from_cursor"
+              - "!^get_schema"
+              - "!^reconnect"
+              - "!^(context|database|select_builder|select|table|table_expr|translator)_class"
+              - "!^same_kind"
+              - "!^infer_(dtype_default|list|map|set|struct)$"
+              - "!^highest_precedence$"
+              - "!^scalar$"
+              - "!^column$"
+              - "!^option_context$"
+          rendering:
+            show_category_heading: true
+            show_root_full_path: false
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_source: false
+  - mkdocs-jupyter:
+      execute: true
+      ignore:
+        - "*.py"
+      execute_ignore: "tutorial/*Geospatial*.ipynb"
+      include_source: true
+      theme: dark
+  - literate-nav
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - meta
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+      options:
+        custom_icons:
+          - docs/static/icons
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink:
+      provider: github
+      repo_url_shortener: true
+  - pymdownx.saneheaders
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+      permalink_title: "Anchor link to this section for reference"
+extra:
+  version:
+    provider: mike
+  project_name: "ibis"
+  team:
+    - name: "Maintainers"
+      members:
+        - cpcloud
+        - kszucs
+        - jreback
+        - gforsyth
+        - jcrist
+        - saulpw
+  social:
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/IbisData
+    - icon: fontawesome/brands/github
+      link: https://github.com/ibis-project/ibis/discussions
+    - icon: fontawesome/brands/gitter
+      link: https://gitter.im/ibis-dev/Lobby
+    - icon: fontawesome/brands/stack-overflow
+      link: https://stackoverflow.com/questions/tagged/ibis
+  support_levels:
+    supported:
+      icon: :material-check-decagram:{ .verified }
+      description: Tested in CI. If this doesn't work for you, please [file an issue](https://github.com/ibis-project/ibis/issues/new).
+    bug:
+      icon: :material-bug:{ .bug }
+      description: Should work but doesn't because upstream is broken. Supported on a best-effort basis.
+    unsupported:
+      icon: :material-cancel:{ .cancel }
+      description: Unlikely to ever be supported or no upstream support.
+
+copyright: "Copyright &copy; 2014-2022"
