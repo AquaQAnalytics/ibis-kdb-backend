@@ -1,6 +1,8 @@
 # ibis-kdb-backend
 
-## Install
+## Installation
+
+![Ibis](https://ibis-project.org/docs/3.2.0/) is a python library so you must have python installed on your device to use it. Installation instructions can be found ![here](https://www.python.org/downloads/).
 
 To get started with Ibis you need to install the Ibis framework with:
 ```
