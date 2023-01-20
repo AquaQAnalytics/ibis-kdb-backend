@@ -119,13 +119,25 @@ class BaseKDBBackend(BaseBackend):
 
     def database(self, name=None):
         return self.database_class(name, self)
-
-    def table(self, table_name: str):
+    #This will push processing down to kdb but I don't like the way it is implemented
+    def table(self, table_name: str, head=False, group_by=False, by=None):
+        def get_head():
+            return self.qpandas("5#" + table_name)
+        def get_group_by():
+            return self.qpandas("select avg price by " + by + " from " + table_name)
+        if head==True:
+            print("test")  
+            return get_head()
+        if group_by==True:
+            return get_group_by()
         return self.qpandas(table_name)
 
         # return self.table_class(table_name, schema, self).to_expr()
         # # kwargs is a catch all for any options required by other backends.
         # self.dictionary[table_name] = obj
+
+    def head(self, table_name: str):
+        return self.qpandas("5#" + table_name)
 
     def get_schema(self, table_name, database=None):
         schemas = self.schemas
