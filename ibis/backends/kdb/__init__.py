@@ -112,29 +112,23 @@ class BaseKDBBackend(BaseBackend):
     def list_tables(self, like=None, database=None):
         return self._filter_with_like(list(self.dictionary.keys()), like)
 
-    # def table(self, name: str, schema: sch.Schema = None):
-    #     df = self.dictionary[name]
-    #     schema = sch.infer(df, schema=schema or self.schemas.get(name, None))
-    #     return self.table_class(name, schema, self).to_expr()
-
     def database(self, name=None):
         return self.database_class(name, self)
-    #This will push processing down to kdb but I don't like the way it is implemented
-    def table(self, table_name: str, head=False, group_by=False, by=None):
-        def get_head():
-            return self.qpandas("5#" + table_name)
-        def get_group_by():
-            return self.qpandas("select avg price by " + by + " from " + table_name)
-        if head==True:
-            print("test")  
-            return get_head()
-        if group_by==True:
-            return get_group_by()
-        return self.qpandas(table_name)
 
-        # return self.table_class(table_name, schema, self).to_expr()
-        # # kwargs is a catch all for any options required by other backends.
-        # self.dictionary[table_name] = obj
+    #This will push processing down to kdb but I don't like the way it is implemented
+    def table(self, table: str, head=False, by="", columns="", aggregation="", where=""):
+        if head==True:
+            return self.qpandas("5#" + table)
+        elif by!="" and where!="":
+            return self.qpandas("select " + aggregation + " " + columns + " by " + by + " from " + table +" where " + where)
+        elif by!="":
+            return self.qpandas("select " + aggregation + " " + columns + " by " + by + " from " + table)
+        elif where!="":
+            return self.qpandas("select " + aggregation + " " + columns + " from " + table +" where " + where)
+        elif columns!="":
+            return self.qpandas("select " + aggregation + " " + columns + " from " + table)
+
+        return self.qpandas(table)
 
     def head(self, table_name: str):
         return self.qpandas("5#" + table_name)
