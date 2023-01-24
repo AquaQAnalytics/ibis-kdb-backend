@@ -52,3 +52,22 @@ This should print the following confirming it is connected:
 IPC version: 3. Is connected: True
 ```
 Now that your connection is establish you can pass queries into it.
+
+## Example query
+Right now the only function that has been programmed to work with kdb to apply aggregations is the table() function.
+This function takes the following arguments:
+```
+table(self, table: str, head=False, by="", columns="", aggregation="", where="")
+```
+So you could pass in the following items:
+```
+q.table(table="trade",columns="price",aggregation="avg",by="sym")
+```
+You should get something that looks like this:
+
+|sym     |price |
+|--------|------|
+|b'APPL' |109.34|
+|b'CAT'  |252.32|
+|b'GOOG' |209.11|
+|b'NYSE' |57.59 |
