@@ -35,3 +35,20 @@ You will need to add the following line to the end of the file:
 ```
 kdb=ibis.backends.kdb
 ```
+
+## Getting started 
+To use ibis you must first start a python session.
+Once in the session you will need to import ibis:
+```
+>>> import ibis
+```
+Next open a connection to your kdb session. By default this will be looking for a process running on your localhost at port 8000.
+```
+>>> q=ibis.kdb.connect()
+```
+This should print the following confirming it is connected:
+```
+:localhost:8000
+IPC version: 3. Is connected: True
+```
+Now that your connection is establish you can pass queries into it.
