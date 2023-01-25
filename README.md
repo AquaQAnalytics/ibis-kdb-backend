@@ -57,11 +57,11 @@ Now that your connection is establish you can pass queries into it.
 Right now the only function that has been programmed to work with kdb to apply aggregations is the table() function.
 This function takes the following arguments:
 ```
-table(self, table: str, head=False, by="", columns="", aggregation="", where="")
+table(self, table: str, select="", by="", where="")
 ```
 So you could pass in the following items:
 ```
-q.table(table="trade",columns="price",aggregation="avg",by="sym")
+q.table(table="trade",select="avg price",by="sym")
 ```
 You should get something that looks like this:
 

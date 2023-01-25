@@ -116,39 +116,25 @@ class BaseKDBBackend(BaseBackend):
         return self.database_class(name, self)
 
     #This will push processing down to kdb but I don't like the way it is implemented
-    def table(self, table: str, select="", by="", where="", columns="", aggregation=""):
-        # select=[]
-        # columns=columns.split(",")
-        # for column in columns:x
-        #     select.append(aggregation + " " + column)
-        # select=",".join(select)
+    def table(self, table: str, select="", by="", where=""):
         if by!="" and where!="":
             return self.qpandas("select " + select + " by " + by + " from " + table + " where " + where)
         elif by!="":
             return self.qpandas("select " + select + " by " + by + " from " + table)
         elif where!="":
             return self.qpandas("select " + select + " from " + table + " where " + where)
-        # elif columns!="":
-        #     return self.qpandas("select " + select + " from " + table)
         elif select!="":
             return self.qpandas("select " + select + " from " + table)
         
         return self.qpandas(table)
 
-    def q_table(self, table: str, select="", by="", where="", columns="", aggregation=""):
-        # select=[]
-        # columns=columns.split(",")
-        # for column in columns:x
-        #     select.append(aggregation + " " + column)
-        # select=",".join(select)
+    def q_table(self, table: str, select="", by="", where=""):
         if by!="" and where!="":
             return self.q("select " + select + " by " + by + " from " + table + " where " + where)
         elif by!="":
             return self.q("select " + select + " by " + by + " from " + table)
         elif where!="":
             return self.q("select " + select + " from " + table + " where " + where)
-        # elif columns!="":
-        #     return self.qpandas("select " + select + " from " + table)
         elif select!="":
             return self.q("select " + select + " from " + table)
         
