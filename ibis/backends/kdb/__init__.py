@@ -116,27 +116,27 @@ class BaseKDBBackend(BaseBackend):
         return self.database_class(name, self)
 
     #This will push processing down to kdb but I don't like the way it is implemented
-    def table(self, table: str, head=False, by="", columns="", aggregation="", where=""):
-        select=[]
-        columns=columns.split(",")
-        for column in columns:
-            select.append(aggregation + " " + column)
-        select=",".join(select)
-        if head==True:
-            return self.qpandas("5#" + table)
-        elif by!="" and where!="":
+    def table(self, table: str, select="", by="", where="", columns="", aggregation=""):
+        # select=[]
+        # columns=columns.split(",")
+        # for column in columns:x
+        #     select.append(aggregation + " " + column)
+        # select=",".join(select)
+        if by!="" and where!="":
             return self.qpandas("select " + select + " by " + by + " from " + table + " where " + where)
         elif by!="":
             return self.qpandas("select " + select + " by " + by + " from " + table)
         elif where!="":
             return self.qpandas("select " + select + " from " + table + " where " + where)
-        elif columns!="":
+        # elif columns!="":
+        #     return self.qpandas("select " + select + " from " + table)
+        elif select!="":
             return self.qpandas("select " + select + " from " + table)
-
+        
         return self.qpandas(table)
 
-    def head(self, table_name: str):
-        return self.qpandas("5#" + table_name)
+    def head(self, table: str):
+        return self.qpandas("5#" + table)
 
     def get_schema(self, table_name, database=None):
         schemas = self.schemas
