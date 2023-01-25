@@ -117,16 +117,21 @@ class BaseKDBBackend(BaseBackend):
 
     #This will push processing down to kdb but I don't like the way it is implemented
     def table(self, table: str, head=False, by="", columns="", aggregation="", where=""):
+        select=[]
+        columns=columns.split(",")
+        for column in columns:
+            select.append(aggregation + " " + column)
+        select=",".join(select)
         if head==True:
             return self.qpandas("5#" + table)
         elif by!="" and where!="":
-            return self.qpandas("select " + aggregation + " " + columns + " by " + by + " from " + table +" where " + where)
+            return self.qpandas("select " + select + " by " + by + " from " + table + " where " + where)
         elif by!="":
-            return self.qpandas("select " + aggregation + " " + columns + " by " + by + " from " + table)
+            return self.qpandas("select " + select + " by " + by + " from " + table)
         elif where!="":
-            return self.qpandas("select " + aggregation + " " + columns + " from " + table +" where " + where)
+            return self.qpandas("select " + select + " from " + table + " where " + where)
         elif columns!="":
-            return self.qpandas("select " + aggregation + " " + columns + " from " + table)
+            return self.qpandas("select " + select + " from " + table)
 
         return self.qpandas(table)
 
