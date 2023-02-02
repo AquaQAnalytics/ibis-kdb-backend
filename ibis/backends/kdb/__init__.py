@@ -33,11 +33,13 @@ class BaseKDBBackend(BaseBackend):
 
     class Options(ibis.config.Config):
         enable_trace: bool = False
-
+     
     def do_connect(
         self,
-        host: str = "localhost",
-        port: int = 8000,
+        #host: str = "localhost",
+        #port: int = 8000,
+        host: str = "81.150.99.19",
+        port: int = 8001,
     ) -> None:
         """Construct a client from a dictionary of pandas DataFrames.
 
@@ -115,6 +117,7 @@ class BaseKDBBackend(BaseBackend):
     def database(self, name=None):
         return self.database_class(name, self)
 
+    """
     #This will push processing down to kdb but I don't like the way it is implemented
     def table(self, table: str, select="", by="", where="", columns="", aggregation=""):
         # select=[]
@@ -134,7 +137,7 @@ class BaseKDBBackend(BaseBackend):
             return self.qpandas("select " + select + " from " + table)
         
         return self.qpandas(table)
-
+    
     def q_table(self, table: str, select="", by="", where="", columns="", aggregation=""):
         # select=[]
         # columns=columns.split(",")
@@ -153,7 +156,49 @@ class BaseKDBBackend(BaseBackend):
             return self.q("select " + select + " from " + table)
         
         return self.q(table)
+    """
 
+    #####
+    # example query
+    # query = q.qrybuild("trade").select("avg price").by("sym").where("amount>150")
+    # qry_str = q.compile(query)
+    # q.execute(qry_str)
+    
+    def execute(self, query): 
+        return self.qpandas(query)
+
+    def compile(self, expr, *args, **kwargs):
+        expr=expr.query
+        return " ".join(expr)
+    
+    class qrybuild():
+        def __init__(self, name):
+            self.name=name
+
+        def select(self,input=""):
+            self.bycnt=0                                            # counters so that if you run the by/where again it'll add to query correctly
+            self.wherecnt=0
+            self.query=["select",input,"from",self.name]
+            return self
+        def by(self,input):
+            if self.bycnt==0:
+                self.query.insert(2,"by " + input)
+                self.bycnt=1
+            else:
+                self.query.insert(3,"," + input)
+            return self
+        def where(self,input):
+            if self.wherecnt==0:
+                self.query.append("where " + input)
+                self.wherecnt=1
+            else:
+                self.query.append("," + input)
+            return self
+        def return_query(self):                                      # a debugging function, replaced by compile
+            return " ".join(self.query)
+
+    #####
+        
     def head(self, table: str):
         return self.qpandas("5#" + table)
 
@@ -164,9 +209,6 @@ class BaseKDBBackend(BaseBackend):
         except KeyError:
             schemas[table_name] = schema = sch.infer(self.dictionary[table_name])
         return schema
-
-    def compile(self, expr, *args, **kwargs):
-        return expr
 
     def create_table(self, table_name, obj=None, schema=None):
         """Create a table."""
@@ -259,7 +301,7 @@ class Backend(BaseKDBBackend):
             return pa.Array.from_pandas(output)
         else:
             return pa.scalar(output)
-
+    """
     def execute(self, query, params=None, limit='default', **kwargs):
         from ibis.backends.pandas.core import execute_and_reset
 
@@ -284,3 +326,4 @@ class Backend(BaseKDBBackend):
             params = {k.op() if hasattr(k, 'op') else k: v for k, v in params.items()}
 
         return execute_and_reset(node, params=params, **kwargs)
+        """
