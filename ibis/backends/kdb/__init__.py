@@ -160,7 +160,7 @@ class BaseKDBBackend(BaseBackend):
 
     #####
     # example query
-    # query = q.qrybuild("trade").select("avg price").by("sym").where("amount>150")
+    # query = q.select("trade").cols("avg price").by("sym").where("amount>150")
     # qry_str = q.compile(query)
     # q.execute(qry_str)
     
@@ -171,31 +171,19 @@ class BaseKDBBackend(BaseBackend):
         expr=expr.query
         return " ".join(expr)
     
-    class qrybuild():
+    class select():
         def __init__(self, name):
             self.name=name
-
-        def select(self,input=""):
-            self.bycnt=0                                            # counters so that if you run the by/where again it'll add to query correctly
-            self.wherecnt=0
-            self.query=["select",input,"from",self.name]
+            self.query=["select","","","from",self.name,""]         # cols,by,where
+        def cols(self,input=""):
+            self.query[1] = input
             return self
         def by(self,input):
-            if self.bycnt==0:
-                self.query.insert(2,"by " + input)
-                self.bycnt=1
-            else:
-                self.query.insert(3,"," + input)
+            self.query[2] = "by " + input
             return self
         def where(self,input):
-            if self.wherecnt==0:
-                self.query.append("where " + input)
-                self.wherecnt=1
-            else:
-                self.query.append("," + input)
+            self.query[5] = "where " + input
             return self
-        def return_query(self):                                      # a debugging function, replaced by compile
-            return " ".join(self.query)
 
     #####
         

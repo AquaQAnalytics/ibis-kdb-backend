@@ -1,0 +1,5 @@
+#ibis/backends/kdb/__init__.py
+
+# pycache
+__pycache__/
+*.py[cod]
