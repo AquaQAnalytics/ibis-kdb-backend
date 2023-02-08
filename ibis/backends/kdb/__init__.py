@@ -30,7 +30,7 @@ class BaseKDBBackend(BaseBackend):
 
     name = "pandas"
     backend_table_type = pd.DataFrame
-
+    
     class Options(ibis.config.Config):
         enable_trace: bool = False
      
@@ -111,9 +111,9 @@ class BaseKDBBackend(BaseBackend):
     def list_databases(self, like=None):
         raise NotImplementedError('pandas backend does not support databases')
 
-    def list_tables(self, like=None, database=None):
-        return self._filter_with_like(list(self.dictionary.keys()), like)
-
+    #def list_tables(self, like=None, database=None):
+    #    return self._filter_with_like(list(self.dictionary.keys()), like)
+ 
     def database(self, name=None):
         return self.database_class(name, self)
 
@@ -157,36 +157,70 @@ class BaseKDBBackend(BaseBackend):
         
         return self.q(table)
     """
+    #def table(self, table:str):
+    #    return self.qpandas(table)
 
     #####
     # example query
     # query = q.select("trade").cols("avg price").by("sym").where("amount>150")
     # qry_str = q.compile(query)
     # q.execute(qry_str)
-    
-    def execute(self, query): 
+
+    def execute(self, query:str): 
         return self.qpandas(query)
 
     def compile(self, expr, *args, **kwargs):
         expr=expr.query
         return " ".join(expr)
-    
-    class select():
-        def __init__(self, name):
-            self.name=name
-            self.query=["select","","","from",self.name,""]         # cols,by,where
-        def cols(self,input=""):
-            self.query[1] = input
+
+    class agg_col():
+        def __init__(self,colname:str) -> None:
+            self.colname=colname
+            self.phrase=["","",self.colname,""]
+        def mean(self):
+            self.phrase[1] = "avg("
+            self.phrase[3] = ")"
             return self
-        def by(self,input):
-            self.query[2] = "by " + input
-            return self
-        def where(self,input):
-            self.query[5] = "where " + input
+        def name(self,name: str):
+            self.phrase[0] = (name+":")
             return self
 
+    class table():
+        def __init__(self, name: str):
+            self.name=name
+            self.query=["select","","","from",self.name,""]         # cols,by,where
+        def aggregate(self,input):
+            self.query[1] = " ".join(input.phrase)
+            return self
+        def group_by(self,input:str):
+            self.query[2] = "by " + input
+            return self
+        def where(self,input:str):
+            self.query[5] = "where " + input
+            return self
+            
+    """
+    def convert_from_byte(self,table):
+        str_tab = table.select_dtypes([object])
+        str_tab = str_tab.stack().str.decode('utf-8').unstack()
+        for col in str_tab:
+            table[col] = str_tab[col]
+        return table
+    
+    def table(self,tname:str):
+        self.tname=tname
+        self.query=["select","","","from",self.tname,""]         # cols,by,where
+        expr = " ".join(self.query)
+        tab = self.qpandas(expr)
+        tab = self.convert_from_byte(tab)
+        return tab
+    """
+
+    def list_tables(self):                                               # tables in root namespace
+        return self.qpandas("tables[]")
+    
     #####
-        
+    
     def head(self, table: str):
         return self.qpandas("5#" + table)
 
