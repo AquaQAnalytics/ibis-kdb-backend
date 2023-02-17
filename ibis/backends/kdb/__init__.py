@@ -12,6 +12,8 @@ import ibis.expr.operations as ops
 import ibis.expr.schema as sch
 import ibis.expr.types as ir
 
+from ibis.backends.kdb.compiler import KDBCompiler
+
 from ibis.backends.base import BaseBackend
 from qpython import qconnection
 
@@ -36,8 +38,6 @@ class BaseKDBBackend(BaseBackend):
      
     def do_connect(
         self,
-        #host: str = "localhost",
-        #port: int = 8000,
         host: str = "81.150.99.19",
         port: int = 8001,
     ) -> None:
@@ -54,7 +54,7 @@ class BaseKDBBackend(BaseBackend):
         >>> ibis.pandas.connect({"t": pd.DataFrame({"a": [1, 2, 3]})})
         <ibis.backends.pandas.Backend at 0x...>
         """
-
+        
         #Connect the q session
         q = qconnection.QConnection(host = host, port = port)
         qpandas = qconnection.QConnection(host=host, port=port, pandas=True)
@@ -67,6 +67,8 @@ class BaseKDBBackend(BaseBackend):
 
         self.q = q
         self.qpandas = qpandas
+        #self.compiler = KDBCompiler
+
 
     def close(self):
         self.q.close()
@@ -117,105 +119,54 @@ class BaseKDBBackend(BaseBackend):
     def database(self, name=None):
         return self.database_class(name, self)
 
-    """
-    #This will push processing down to kdb but I don't like the way it is implemented
-    def table(self, table: str, select="", by="", where="", columns="", aggregation=""):
-        # select=[]
-        # columns=columns.split(",")
-        # for column in columns:x
-        #     select.append(aggregation + " " + column)
-        # select=",".join(select)
-        if by!="" and where!="":
-            return self.qpandas("select " + select + " by " + by + " from " + table + " where " + where)
-        elif by!="":
-            return self.qpandas("select " + select + " by " + by + " from " + table)
-        elif where!="":
-            return self.qpandas("select " + select + " from " + table + " where " + where)
-        # elif columns!="":
-        #     return self.qpandas("select " + select + " from " + table)
-        elif select!="":
-            return self.qpandas("select " + select + " from " + table)
-        
-        return self.qpandas(table)
+    #######
     
-    def q_table(self, table: str, select="", by="", where="", columns="", aggregation=""):
-        # select=[]
-        # columns=columns.split(",")
-        # for column in columns:x
-        #     select.append(aggregation + " " + column)
-        # select=",".join(select)
-        if by!="" and where!="":
-            return self.q("select " + select + " by " + by + " from " + table + " where " + where)
-        elif by!="":
-            return self.q("select " + select + " by " + by + " from " + table)
-        elif where!="":
-            return self.q("select " + select + " from " + table + " where " + where)
-        # elif columns!="":
-        #     return self.qpandas("select " + select + " from " + table)
-        elif select!="":
-            return self.q("select " + select + " from " + table)
-        
-        return self.q(table)
-    """
-    #def table(self, table:str):
-    #    return self.qpandas(table)
+    table_class = ops.DatabaseTable
+    table_expr_class = ir.Table
+    compiler = KDBCompiler #SQLiteCompiler
 
-    #####
-    # example query
-    # query = q.select("trade").cols("avg price").by("sym").where("amount>150")
-    # qry_str = q.compile(query)
-    # q.execute(qry_str)
+    def get_schema(self, name, database=None):
+        schema = ibis.schema({"time":"string",
+                              "sym": "string",
+                              "src": "string",
+                              "price": "Float",
+                              "amount": "int",
+                              "side": "string"})
+        #schema = ibis.table([('one','string'),('two', 'float'),('three', 'int32')], 'trade')
+        return schema
 
-    def execute(self, query:str): 
-        return self.qpandas(query)
+    #def schema_query(self, name: str):
+    #    return self.qpandas("meta " + name)
 
-    def compile(self, expr, *args, **kwargs):
-        expr=expr.query
-        return " ".join(expr)
+    def table(self, name: str, database: str | None = None) -> ir.Table:
+        schema = self.get_schema(name)
+        node = self.table_class(name, schema, self) # database table
+        return self.table_expr_class(node)
 
-    class agg_col():
-        def __init__(self,colname:str) -> None:
-            self.colname=colname
-            self.phrase=["","",self.colname,""]
-        def mean(self):
-            self.phrase[1] = "avg("
-            self.phrase[3] = ")"
-            return self
-        def name(self,name: str):
-            self.phrase[0] = (name+":")
-            return self
+    def compile(
+        self,
+        expr: ir.Expr,
+        params: Mapping[ir.Scalar, Any] | None = None,
+        limit: str = 'default',
+        **kwargs: Any,
+    ):
+        kwargs.pop('timecontext', None)
+        query_ast = self.compiler.to_ast_ensure_limit(expr, limit, params=params)
+        sql = query_ast.compile()
+        return sql
 
-    class table():
-        def __init__(self, name: str):
-            self.name=name
-            self.query=["select","","","from",self.name,""]         # cols,by,where
-        def aggregate(self,input):
-            self.query[1] = " ".join(input.phrase)
-            return self
-        def group_by(self,input:str):
-            self.query[2] = "by " + input
-            return self
-        def where(self,input:str):
-            self.query[5] = "where " + input
-            return self
-            
-    """
-    def convert_from_byte(self,table):
-        str_tab = table.select_dtypes([object])
-        str_tab = str_tab.stack().str.decode('utf-8').unstack()
-        for col in str_tab:
-            table[col] = str_tab[col]
-        return table
+    def execute(
+        self,
+        expr: ir.Expr,
+        params: Mapping[ir.Scalar, Any] | None = None,
+        limit: str = 'default',
+        **kwargs: Any,
+    ):
+        kwargs.pop('timecontext', None)
+        query_ast = self.compiler.to_ast_ensure_limit(expr, limit, params=params)
+        sql = query_ast.compile()
+        return self.qpandas(sql)
     
-    def table(self,tname:str):
-        self.tname=tname
-        self.query=["select","","","from",self.tname,""]         # cols,by,where
-        expr = " ".join(self.query)
-        tab = self.qpandas(expr)
-        tab = self.convert_from_byte(tab)
-        return tab
-    """
-
     def list_tables(self):                                               # tables in root namespace
         return self.qpandas("tables[]")
     
@@ -223,14 +174,6 @@ class BaseKDBBackend(BaseBackend):
     
     def head(self, table: str):
         return self.qpandas("5#" + table)
-
-    def get_schema(self, table_name, database=None):
-        schemas = self.schemas
-        try:
-            schema = schemas[table_name]
-        except KeyError:
-            schemas[table_name] = schema = sch.infer(self.dictionary[table_name])
-        return schema
 
     def create_table(self, table_name, obj=None, schema=None):
         """Create a table."""
@@ -305,8 +248,8 @@ class BaseKDBBackend(BaseBackend):
 
 class Backend(BaseKDBBackend):
     name = 'pandas'
-    database_class = PandasDatabase
-    table_class = PandasTable
+    #database_class = PandasDatabase
+    #table_class = PandasTable
 
     def to_pyarrow(
         self,
