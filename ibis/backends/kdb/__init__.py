@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Mapping, MutableMapping
+from typing import TYPE_CHECKING, Any, Mapping
 
 import pandas as pd
 
@@ -32,32 +32,39 @@ class BaseKDBBackend(BaseBackend):
 
     name = "pandas"
     backend_table_type = pd.DataFrame
-    
+
+    table_class = ops.DatabaseTable
+    table_expr_class = ir.Table
+    compiler = KDBCompiler
+
     class Options(ibis.config.Config):
         enable_trace: bool = False
      
     def do_connect(
         self,
-        host: str = "81.150.99.19",
-        port: int = 8001,
+        host: str = "localhost",
+        port: int = 8000,
     ) -> None:
-        """Construct a client from a dictionary of pandas DataFrames.
+        """Construct a client.
 
         Parameters
         ----------
-        dictionary
-            Mutable mapping of string table names to pandas DataFrames.
+        host
+            hostname or IP
+        port
+            interger port number
 
         Examples
         --------
         >>> import ibis
-        >>> ibis.pandas.connect({"t": pd.DataFrame({"a": [1, 2, 3]})})
-        <ibis.backends.pandas.Backend at 0x...>
+        >>> ibis.kdb.connect(host="localhost",port=8000)
+        <ibis.kdb.Backend at 0x...>
         """
         
         #Connect the q session
         q = qconnection.QConnection(host = host, port = port)
         qpandas = qconnection.QConnection(host=host, port=port, pandas=True)
+
         #Open handle
         q.open()
         qpandas.open()
@@ -67,40 +74,10 @@ class BaseKDBBackend(BaseBackend):
 
         self.q = q
         self.qpandas = qpandas
-        #self.compiler = KDBCompiler
-
 
     def close(self):
         self.q.close()
         self.qpandas.close()
-
-    def from_dataframe(
-        self,
-        df: pd.DataFrame,
-        name: str = 'df',
-        client: BaseKDBBackend | None = None,
-    ) -> ir.Table:
-        """Construct an ibis table from a pandas DataFrame.
-
-        Parameters
-        ----------
-        df
-            A pandas DataFrame
-        name
-            The name of the pandas DataFrame
-        client
-            Client dictionary will be mutated with the name of the DataFrame,
-            if not provided a new client is created
-
-        Returns
-        -------
-        Table
-            A table expression
-        """
-        if client is None:
-            return self.connect({name: df}).table(name)
-        client.dictionary[name] = df
-        return client.table(name)
 
     @property
     def version(self) -> str:
@@ -112,36 +89,60 @@ class BaseKDBBackend(BaseBackend):
 
     def list_databases(self, like=None):
         raise NotImplementedError('pandas backend does not support databases')
-
-    #def list_tables(self, like=None, database=None):
-    #    return self._filter_with_like(list(self.dictionary.keys()), like)
  
     def database(self, name=None):
         return self.database_class(name, self)
 
     #######
     
-    table_class = ops.DatabaseTable
-    table_expr_class = ir.Table
-    compiler = KDBCompiler #SQLiteCompiler
+    def _convert_from_byte(self,table):
+        """ Converts Object columns in a pandas dataframe to string """
+        str_tab = table.select_dtypes([object])
+        str_tab = str_tab.stack().str.decode('utf-8').unstack()
+        for col in str_tab:
+            table[col] = str_tab[col]
+        return table
 
-    def get_schema(self, name, database=None):
-        schema = ibis.schema({"time":"string",
-                              "sym": "string",
-                              "src": "string",
-                              "price": "Float",
-                              "amount": "int",
-                              "side": "string"})
-        #schema = ibis.table([('one','string'),('two', 'float'),('three', 'int32')], 'trade')
+    def _convert_idx_from_byte(self,table):
+        """ Converts bytes index column in a pandas dataframe to string """
+        str_tab = table.index
+        str_tab = str_tab.str.decode('utf-8')
+        table.index = str_tab
+        return table
+
+    def _mapping(self, val):
+        """ Mapping function for KDB+ datatypes to python/IBIS """
+        if val=="i" or val=="h" or val=="j":
+            return "int"    # int64 in ibis
+        elif val=="f" or val=="e":
+            return "Float"  # float 64 in ibis
+        else:
+            return "string"
+
+    def _get_schema(self, name: str):
+        """ Retrieve meta of table from query to KDB+ process. Converts to IBIS schema"""
+        tab=self.qpandas("meta " + name)
+        tab=self._convert_idx_from_byte(tab)
+        idx,typ=[],[]
+
+        for i in range(len(tab)):
+            idx.append(tab.index[i])
+            typ.append(tab['t'][i])
+
+        typ = list(map(self._mapping,typ))
+        schema = ibis.schema(dict(zip(idx, typ)))
         return schema
-
-    #def schema_query(self, name: str):
-    #    return self.qpandas("meta " + name)
-
+        
     def table(self, name: str, database: str | None = None) -> ir.Table:
-        schema = self.get_schema(name)
-        node = self.table_class(name, schema, self) # database table
-        return self.table_expr_class(node)
+        """ Creates IBIS table expression from table name """
+        if self.qpandas("`" + name + " in key`."):
+            schema = self._get_schema(name)
+            node = self.table_class(name, schema, self) 
+            return self.table_expr_class(node)
+        else:
+            raise FileNotFoundError(
+                "Table: " + name + " doesn't exist in the KDB+ process."
+                )
 
     def compile(
         self,
@@ -150,6 +151,14 @@ class BaseKDBBackend(BaseBackend):
         limit: str = 'default',
         **kwargs: Any,
     ):
+        """ Compiles the IBIS table expression into a QSQL statement """
+        if not isinstance(expr, ir.Expr):
+            raise TypeError(
+                "`expr` has type {!r}, expected ibis.expr.types.Expr".format(
+                    type(expr).__name__
+                )
+            )
+
         kwargs.pop('timecontext', None)
         query_ast = self.compiler.to_ast_ensure_limit(expr, limit, params=params)
         sql = query_ast.compile()
@@ -162,18 +171,29 @@ class BaseKDBBackend(BaseBackend):
         limit: str = 'default',
         **kwargs: Any,
     ):
-        kwargs.pop('timecontext', None)
-        query_ast = self.compiler.to_ast_ensure_limit(expr, limit, params=params)
-        sql = query_ast.compile()
-        return self.qpandas(sql)
+        """ Calls the compile function and executes the QSQL server side. """
+        sql = self.compile(expr)
+        tab=self.qpandas(sql)
+        if type(tab.index[0])==bytes: # Converts the index to a string
+            tab=self._convert_idx_from_byte(tab)
+        tab=self._convert_from_byte(tab)
+        return tab
     
-    def list_tables(self):                                               # tables in root namespace
-        return self.qpandas("tables[]")
-    
+    def list_tables(self):
+        """ Lists tables in root namespace on KDB+ process """
+        return self.qpandas("tables[]").str.decode('utf-8')
+        
+    def head(self, table: str):
+        """ Returns first 5 rows from table. """
+        if self.qpandas("`" + table + " in key`."):
+            return self.qpandas("5#" + table)
+        else:
+            raise FileNotFoundError(
+                "Table: " + table + " doesn't exist in the KDB+ process."
+                )
+
     #####
     
-    def head(self, table: str):
-        return self.qpandas("5#" + table)
 
     def create_table(self, table_name, obj=None, schema=None):
         """Create a table."""
@@ -266,29 +286,3 @@ class Backend(BaseKDBBackend):
             return pa.Array.from_pandas(output)
         else:
             return pa.scalar(output)
-    """
-    def execute(self, query, params=None, limit='default', **kwargs):
-        from ibis.backends.pandas.core import execute_and_reset
-
-        if limit != 'default' and limit is not None:
-            raise ValueError(
-                'limit parameter to execute is not yet implemented in the '
-                'pandas backend'
-            )
-
-        if not isinstance(query, ir.Expr):
-            raise TypeError(
-                "`query` has type {!r}, expected ibis.expr.types.Expr".format(
-                    type(query).__name__
-                )
-            )
-
-        node = query.op()
-
-        if params is None:
-            params = {}
-        else:
-            params = {k.op() if hasattr(k, 'op') else k: v for k, v in params.items()}
-
-        return execute_and_reset(node, params=params, **kwargs)
-        """

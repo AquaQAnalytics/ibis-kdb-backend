@@ -1,9 +1,7 @@
 from io import StringIO
 import ibis.expr.operations as ops
 import ibis.util as util
-from ibis.backends.base.sql.compiler import (
-    Select,
-)
+from ibis.backends.base.sql.compiler import Select
 
 
 class KDBSelect(Select):
@@ -199,4 +197,4 @@ class KDBSelect(Select):
                 trans_exprs.append(translated)
             lines.append('HAVING {}'.format(' AND '.join(trans_exprs)))
 
-        return '\n'.join(lines)
+        return ' '.join(lines)
