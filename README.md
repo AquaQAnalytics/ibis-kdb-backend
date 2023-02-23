@@ -1,6 +1,7 @@
 # ibis-kdb-backend
 
 ## Installation
+Requires Python <3.11 for installation of requirements. As of 23/02/2023 the package Pyarrow doesn't work in python >=3.11 and so can't build the dependencies correctly. To combat this use an earlier version of Python.
 
 [Ibis](https://ibis-project.org/) is a python library so you must have python installed on your device to use it. Installation instructions can be found [here](https://www.python.org/downloads/).
 

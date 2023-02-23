@@ -133,15 +133,15 @@ class BaseKDBBackend(BaseBackend):
         schema = ibis.schema(dict(zip(idx, typ)))
         return schema
         
-    def table(self, name: str, database: str | None = None) -> ir.Table:
+    def table(self, table: str, database: str | None = None) -> ir.Table:
         """ Creates IBIS table expression from table name """
-        if self.qpandas("`" + name + " in key`."):
-            schema = self._get_schema(name)
-            node = self.table_class(name, schema, self) 
+        if self.qpandas("`" + table + " in key`."):
+            schema = self._get_schema(table)
+            node = self.table_class(table, schema, self) 
             return self.table_expr_class(node)
         else:
             raise FileNotFoundError(
-                "Table: " + name + " doesn't exist in the KDB+ process."
+                "Table: " + table + " doesn't exist in the KDB+ process."
                 )
 
     def compile(
@@ -176,7 +176,10 @@ class BaseKDBBackend(BaseBackend):
         tab=self.qpandas(sql)
         if type(tab.index[0])==bytes: # Converts the index to a string
             tab=self._convert_idx_from_byte(tab)
-        tab=self._convert_from_byte(tab)
+        for typs in tab.dtypes:
+            if typs=="object":
+                tab=self._convert_from_byte(tab)
+                return tab
         return tab
     
     def list_tables(self):
