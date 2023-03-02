@@ -61,7 +61,22 @@ If you want to connect to a process on homer use the following instead:
 ```
 >>> q=ibis.kdb.connect(host="81.150.99.19",port=8000)
 ```
+## Function descriptions
 
+`connect()`
+ This function uses the function do_connect() which uses qPython to connect to a q process and returns the result in a pandas dataframe. By default, it connects to the localhost with port number 8000, but these can be specified when calling the function. 
+
+`table()`
+ This function is the main part of this example. It takes in the name of the table you are wanting to interact with as a string, creates an Ibis schema of the table by querying the KDB+ process for the table's meta information and then translates it. It then creates an Ibis table expression with that schema which can be then interacted with.  
+
+The idea of this is that the Ibis table is basically a container that knows the schema of the table server side, and any manipulations that you do to it is saved and these manipulations can then be compiled and translated to a QSQL query string that can then be executed server side. 
+
+`compile()` 
+ Uses the KDBCompiler that uses Clickhouse translators and select builders to compile the manipulations on the table expression into a QSQL query string. Clickhouse was used as a base as it was also a string generating backend and used the same table expression as the KDB+ one. This function returns the string containing the QSQL query. 
+
+`execute()`
+ This function calls the compile() function and sends it to the KDB+ process as a sync message. It returns the result in a pandas dataframe.
+ 
 ## Example query
 Right now the only function that has been programmed to work with kdb to apply aggregations is the table() function. We use the market data quant.q script for generating test tables to work with from [this link](https://github.com/AquaQAnalytics/Training-docs/blob/b0198e60f48a5fe8ecb1d9c856e20a8bd6cd0eaa/docs/kdb/resources/quantq.q). Also this assumes that options.interactive=False, it set for true is not yet implemented. All this means is that the functions don't execute immediately upon calling and have to be called with the execute function as shown below.
 
