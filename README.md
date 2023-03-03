@@ -62,6 +62,7 @@ If you want to connect to a process on homer use the following instead:
 >>> q=ibis.kdb.connect(host="81.150.99.19",port=8000)
 ```
 ## Function descriptions
+We created a class BaseKDBBackend that inherited everything from the BaseBackend as all backends must subclass it. The main functions that we care about for this use case are connect(), table(), compile(), and execute(). Ibis works by allowing the user to connect to the database by its connect() function. The user can then specify a table from the database with the table() function and it builds an Ibis expression to hold the information about the table in question. Below are descriptions of the four main functions.
 
 `connect()`
  This function uses the function do_connect() which uses qPython to connect to a q process and returns the result in a pandas dataframe. By default, it connects to the localhost with port number 8000, but these can be specified when calling the function. 
