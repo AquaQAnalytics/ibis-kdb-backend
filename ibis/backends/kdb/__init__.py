@@ -112,9 +112,13 @@ class BaseKDBBackend(BaseBackend):
 
     def _mapping(self, val):
         """ Mapping function for KDB+ datatypes to python/IBIS """
-        if val=="i" or val=="h" or val=="j":
+        int_vals = ["i","h","j"]
+        float_vals = ["f","e"]
+        date_time = ["p","m","d","z"]
+        time_delta = ["n","u","v","t"]
+        if val in int_vals:
             return "int"    # int64 in ibis
-        elif val=="f" or val=="e":
+        elif val in float_vals:
             return "Float"  # float 64 in ibis
         else:
             return "string"
@@ -132,7 +136,7 @@ class BaseKDBBackend(BaseBackend):
         typ = list(map(self._mapping,typ))
         schema = ibis.schema(dict(zip(idx, typ)))
         return schema
-        
+
     def table(self, table: str, database: str | None = None) -> ir.Table:
         """ Creates IBIS table expression from table name """
         if self.qpandas("`" + table + " in key`."):
@@ -174,12 +178,15 @@ class BaseKDBBackend(BaseBackend):
         """ Calls the compile function and executes the QSQL server side. """
         sql = self.compile(expr)
         tab=self.qpandas(sql)
+
         if type(tab.index[0])==bytes: # Converts the index to a string
             tab=self._convert_idx_from_byte(tab)
+
         for typs in tab.dtypes:
             if typs=="object":
                 tab=self._convert_from_byte(tab)
                 return tab
+                
         return tab
     
     def list_tables(self):
