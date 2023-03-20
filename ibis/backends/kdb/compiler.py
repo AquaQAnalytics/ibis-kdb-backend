@@ -27,6 +27,7 @@ class KDBExprTranslator(ExprTranslator):
     )
     def name(self, translated, name, force=True):
         return f'{quote_identifier(name, force=force)}:{translated}'
+    
 class KDBTableSetFormatter(TableSetFormatter):
     _join_names = {
         ops.InnerJoin: 'ALL INNER JOIN',
@@ -44,9 +45,11 @@ class KDBTableSetFormatter(TableSetFormatter):
         # We register in memory tables as external tables because clickhouse
         # doesn't implement a generic VALUES statement
         return op.name
+    
 class KDBSelectBuilder(SelectBuilder):
     def _convert_group_by(self, exprs):
         return exprs
+    
 class KDBUnion(Union):
     @classmethod
     def keyword(cls, distinct):
