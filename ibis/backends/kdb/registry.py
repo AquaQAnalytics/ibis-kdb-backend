@@ -172,7 +172,7 @@ def _call(translator, func, *args):
 
 def _aggregate(translator, func, *args, where=None):
     if where is not None:
-        return _call(translator, f"{func}If", *args, where)
+        return _call(translator, f"{func} If", *args, where)
     else:
         return _call(translator, func, *args)
 
@@ -413,7 +413,7 @@ def _map_literal_values(translator, op):
 def _table_array_view(translator, op):
     ctx = translator.context
     query = ctx.get_compiled_expr(op.table)
-    return f'(\n{util.indent(query, ctx.indent)}\n)'
+    return f'({util.indent(query, ctx.indent)})'
 
 
 def _timestamp_from_unix(translator, op):
@@ -459,7 +459,7 @@ def _exists_subquery(translator, op):
     else:
         raise NotImplementedError
 
-    return f'{key} (\n{util.indent(subquery, ctx.indent)}\n)'
+    return f'{key} ({util.indent(subquery, ctx.indent)})'
 
 
 def _table_column(translator, op):
@@ -483,6 +483,7 @@ def _table_column(translator, op):
         alias = ctx.get_ref(table)
         if alias is not None:
             quoted_name = f'{alias}.{quoted_name}'
+            #quoted_name = f'{alias}'
 
     return quoted_name
 
@@ -624,8 +625,8 @@ _binary_infix_ops = {
     ops.LessEqual: binary_infix.binary_infix_op('<='),
     ops.Less: binary_infix.binary_infix_op('<'),
     # Boolean comparisons
-    ops.And: binary_infix.binary_infix_op('AND'),
-    ops.Or: binary_infix.binary_infix_op('OR'),
+    ops.And: binary_infix.binary_infix_op('and'),
+    ops.Or: binary_infix.binary_infix_op('or'),
     ops.Xor: _xor,
 }
 
@@ -745,8 +746,8 @@ operation_registry = {
     ops.DateAdd: binary_infix.binary_infix_op('+'),
     ops.DateSub: binary_infix.binary_infix_op('-'),
     ops.DateDiff: binary_infix.binary_infix_op('-'),
-    ops.Contains: binary_infix.contains("IN"),
-    ops.NotContains: binary_infix.contains("NOT IN"),
+    ops.Contains: binary_infix.contains("in"),
+    ops.NotContains: binary_infix.contains("not in"),
     ops.TimestampAdd: binary_infix.binary_infix_op('+'),
     ops.TimestampSub: binary_infix.binary_infix_op('-'),
     ops.TimestampDiff: binary_infix.binary_infix_op('-'),

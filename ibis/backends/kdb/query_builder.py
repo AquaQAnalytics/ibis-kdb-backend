@@ -12,12 +12,12 @@ class KDBSelect(Select):
 
     def _all_exprs(self): # need to change
         return tuple(
+            *self.order_by,
             *self.select_set,
             self.table_set,
             *self.where,
             *self.group_by,
             *self.having,
-            *self.order_by,
             *self.subqueries,
         )
 
@@ -26,13 +26,22 @@ class KDBSelect(Select):
         unexpected results."""
         # Can't tell if this is a hack or not. Revisit later
         self.context.set_query(self)
+        
+        # LIMIT
+        limit_frag = self.format_limit()
+
+        # ORDER BY
+        order_frag = self.format_order_by()
 
         # If any subqueries, translate them and add to beginning of query as
-        # part of the WITH section
+        # part of the WITH section # MOVED THIS
         with_frag = self.format_subqueries()
 
         # SELECT
         select_frag = self.format_select_set()
+
+        # GROUP BY and HAVING
+        groupby_frag = self.format_group_by()
 
         # FROM, JOIN, UNION
         from_frag = self.format_table_set()
@@ -40,35 +49,27 @@ class KDBSelect(Select):
         # WHERE
         where_frag = self.format_where()
 
-        # GROUP BY and HAVING
-        groupby_frag = self.format_group_by()
-
-        # ORDER BY
-        order_frag = self.format_order_by()
-
-        # LIMIT
-        limit_frag = self.format_limit()
-
         # Glue together the query fragments and return
         query = ' '.join(
             filter(
                 None,
                 [
+                    limit_frag,
+                    order_frag,
                     with_frag,
                     select_frag,
                     groupby_frag,
                     from_frag,
                     where_frag,
-                    order_frag,
-                    limit_frag,
                 ],
             )
         )
-        query=query.replace("`", "")
+        #query=query.replace("`", "") # not needed
 
         return query
 
     def format_subqueries(self):
+
         if not self.subqueries:
             return
 
@@ -82,7 +83,39 @@ class KDBSelect(Select):
             buf.append(f'({formatted}):{alias}')
 
         return 'WITH {}'.format(','.join(buf))
+    
+    def format_limit(self):
+        if not self.limit:
+            return None
 
+        buf = StringIO()
+
+        n = self.limit.n
+        
+        if offset := self.limit.offset:
+            buf.write(f'({offset} {n}) sublist')
+        else:
+            buf.write(f'{n}# ')
+
+        return buf.getvalue()
+    
+    def format_order_by(self):
+        if not self.order_by:
+            return None
+
+        buf = StringIO()
+        #buf.write('ORDER BY ')
+
+        formatted = []
+        for key in self.order_by:
+            translated = "`" + self._translate(key.expr)
+            suffix = 'xasc' if key.ascending else 'xdesc'
+            translated += f' {suffix}'
+            formatted.append(translated)
+
+        buf.write(', '.join(formatted))
+        return buf.getvalue()
+    
     def format_select_set(self):
         # TODO:
         context = self.context
@@ -172,13 +205,12 @@ class KDBSelect(Select):
         for pred in self.where:
             new_pred = self._translate(pred, permit_subquery=True)
             if npreds > 1:
-                new_pred = f'({new_pred})'
+                new_pred = f'{new_pred}'
             fmt_preds.append(new_pred)
 
         conj = ' ,{}'.format(' ' * 6)
         buf.write(conj.join(fmt_preds))
-        return buf.getvalue()
- 
+
     def format_group_by(self):
         if not len(self.group_by):
             # There is no aggregation, nothing to see here
@@ -197,4 +229,4 @@ class KDBSelect(Select):
                 trans_exprs.append(translated)
             lines.append('HAVING {}'.format(' AND '.join(trans_exprs)))
 
-        return ' '.join(lines)
+        return ' '.join(lines)#
